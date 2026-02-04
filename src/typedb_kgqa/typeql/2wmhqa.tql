@@ -1,0 +1,208 @@
+define
+
+####################################
+# 2WikiMultiHopQA Schema Extension #
+####################################
+# Extends base-schema.tql to model entities and relationships
+# needed for 2WikiMultiHopQA multi-hop questions.
+#
+# Key question patterns covered:
+#   - Family relations (parent, spouse, grandparent, in-law)
+#   - Person biography (birth/death place & date, nationality, cause of death)
+#   - Creative works (film direction, song performance, composition)
+#   - Organisations (location, founding, publishing)
+#   - Comparisons (born/died first, same country, older/younger)
+
+###############
+# ATTRIBUTES  #
+###############
+
+attribute name, value string;
+attribute gender, value string;
+attribute date-of-birth, value datetime;
+attribute date-of-death, value datetime;
+attribute cause-of-death, value string;
+attribute release-date, value datetime;
+attribute date-established, value datetime;
+attribute member-role, value string;
+
+######################
+# ENTITY EXTENSIONS  #
+######################
+
+# -- Person --
+person owns name,
+    owns gender,
+    owns date-of-birth,
+    owns date-of-death,
+    owns cause-of-death;
+
+# -- Organisation --
+organisation owns name,
+    owns date-established;
+
+entity school sub organisation;
+entity company sub organisation;
+entity band sub organisation;
+
+# -- Inanimate objects --
+inanimate-object owns name;
+
+entity creative-work sub inanimate-object,
+    owns release-date;
+
+entity film sub creative-work;
+entity song sub creative-work;
+entity album sub creative-work;
+
+entity airport sub inanimate-object;
+entity museum sub inanimate-object;
+entity lake sub inanimate-object;
+
+# -- Location --
+entity location sub entity-base,
+    owns name;
+
+entity country sub location;
+entity city sub location;
+
+# -- Award --
+entity award sub entity-base,
+    owns name;
+
+##############
+# RELATIONS  #
+##############
+
+# ---- Family ----
+
+relation parentage sub base-association,
+    relates parent as associated,
+    relates child as associated;
+
+person plays parentage:parent,
+    plays parentage:child;
+
+relation marriage sub base-association,
+    relates spouse as associated @card(2);
+
+person plays marriage:spouse;
+
+# ---- Location of birth / death / burial ----
+
+relation birth-place sub base-association,
+    relates born-person as associated,
+    relates place-of-birth as associated;
+
+person plays birth-place:born-person;
+location plays birth-place:place-of-birth;
+
+relation death-place sub base-association,
+    relates died-person as associated,
+    relates place-of-death as associated;
+
+person plays death-place:died-person;
+location plays death-place:place-of-death;
+
+relation burial-place sub base-association,
+    relates buried-person as associated,
+    relates place-of-burial as associated;
+
+person plays burial-place:buried-person;
+location plays burial-place:place-of-burial;
+
+# ---- Geo-containment ----
+# Used for "are X and Y in the same country?" questions
+# and for origin country of films, organisations, etc.
+
+relation located-in sub base-association,
+    relates located-subject as associated,
+    relates containing-location as associated;
+
+inanimate-object plays located-in:located-subject;
+organisation plays located-in:located-subject;
+location plays located-in:located-subject;
+location plays located-in:containing-location;
+
+# ---- Nationality ----
+
+relation nationality sub base-association,
+    relates national as associated,
+    relates nation as associated;
+
+person plays nationality:national;
+country plays nationality:nation;
+
+# ---- Employment ----
+
+relation employment sub base-association,
+    relates employee as associated,
+    relates employer as associated;
+
+person plays employment:employee;
+organisation plays employment:employer;
+
+# ---- Education ----
+
+relation education sub base-association,
+    relates student as associated,
+    relates institution as associated;
+
+person plays education:student;
+organisation plays education:institution;
+
+# ---- Film direction ----
+
+relation film-direction sub base-association,
+    relates director as associated,
+    relates directed-film as associated;
+
+person plays film-direction:director;
+film plays film-direction:directed-film;
+
+# ---- Song performance ----
+
+relation song-performance sub base-association,
+    relates performer as associated,
+    relates performed-song as associated;
+
+person plays song-performance:performer;
+song plays song-performance:performed-song;
+
+# ---- Composition (song or film score) ----
+
+relation composition sub base-association,
+    relates composer as associated,
+    relates composed-work as associated;
+
+person plays composition:composer;
+creative-work plays composition:composed-work;
+
+# ---- Band membership ----
+# member-role captures instrument/position (e.g. "keyboardist", "lead guitarist")
+
+relation band-membership sub base-association,
+    relates member as associated,
+    relates member-band as associated,
+    owns member-role;
+
+person plays band-membership:member;
+band plays band-membership:member-band;
+
+# ---- Awards ----
+
+relation award-receipt sub base-association,
+    relates recipient as associated,
+    relates received-award as associated;
+
+person plays award-receipt:recipient;
+award plays award-receipt:received-award;
+
+# ---- Publishing ----
+
+relation publishing sub base-association,
+    relates publisher as associated,
+    relates publication as associated;
+
+organisation plays publishing:publisher;
+creative-work plays publishing:publication;

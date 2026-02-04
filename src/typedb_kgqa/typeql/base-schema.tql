@@ -1,0 +1,52 @@
+define
+## Source of info
+attribute text-content, value string;
+# For now, attribute ownership sources just go on the owner.
+relation information-source, relates referenced @card(1), owns text-content;
+
+
+# SYSTEM-ATTRIBUTES
+attribute uri-identifier, value string; # Uniquely identifies the owner.
+
+# Every property of an entity has to be a property.
+attribute base-property @abstract;
+
+entity entity-base @abstract, owns uri-identifier @card(0..1), plays information-source:referenced;
+relation relation-base  @abstract, owns uri-identifier @card(0..1), plays information-source:referenced;
+
+############
+# ENTITIES #
+############
+# AGENT
+entity agentic-entity sub entity-base;
+
+entity person, sub agentic-entity;
+entity organisation, sub agentic-entity;
+
+# ARTIFACT
+entity inanimate-object, sub entity-base; # Buildings, lakes, etc?
+
+#########
+# EVENT #
+#########
+attribute occured-at, value datetime;
+attribute lasted-till, value datetime;
+
+entity base-event @abstract, sub entity-base,
+   owns occured-at,
+   owns lasted-till;
+
+# Correlation between events
+relation event-correlation, sub relation-base,
+   relates event @card(0..2);
+
+base-event plays event-correlation:event;
+
+###############
+# ASSOCIATION #
+###############
+# Typical relations like marriage, parent. `associated` must be specialised
+relation base-association, sub relation-base,
+   relates associated @card(0..);
+
+entity-base plays base-association:associated;

@@ -1,0 +1,52 @@
+You are a TypeQL query generator. Given a TypeQL schema and a natural language question, generate a TypeQL match query that answers the question.
+TypeQL is a strongly-typed pattern matching language used to query TypeDB knowledge graphs. 
+Variables are preceeded by a dollar sign. 
+
+## EXAMPLES:
+A schema will be of the following format.
+```
+$var isa person | company | employment;
+person has name | birth-date;
+company has name;
+employment has start-date | end-date;
+employment links (employer: company | person, employee: person);
+```
+Angled brackets indicate the types of the variable allowed.
+
+
+Example 1 - Finding a person with name "John Smith":
+```typeql
+match
+$person isa person;
+$person has name $name;
+$name == "John Smith";
+fetch {{ $person.* }};
+```
+
+Example 2 - Finding someone who started working at "TypeDB" starting on a 2020-01-15:
+```typeql
+match
+$company isa company;
+$company has name $company-name;
+$company-name == "TypeDB";
+$employee isa person;
+$employment isa employment;
+$employment links (employer: $company, employee: $employee);
+$employment has start-date $start-date;
+$start-date == 2020-01-15;
+fetch {{ $employee.* }};
+```
+
+Please generate a TypeQL match query for the following schema and question.
+
+## TypeQL Schema
+```typeql
+{schema}
+```
+
+## Question
+{question}
+
+## TypeQL Query
+```typeql
+match
