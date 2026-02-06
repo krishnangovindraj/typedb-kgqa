@@ -60,14 +60,14 @@ entity museum sub inanimate-object;
 entity lake sub inanimate-object;
 
 # -- Location --
-entity location sub entity-base,
+entity location sub base-entity,
     owns name;
 
 entity country sub location;
 entity city sub location;
 
 # -- Award --
-entity award sub entity-base,
+entity award sub base-entity,
     owns name;
 
 ##############

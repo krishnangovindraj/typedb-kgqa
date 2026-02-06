@@ -26,7 +26,7 @@ def construct_kg(
     use_claude: bool = False,
     model: str = None,
     url: str = "http://localhost:8080/v1",
-    max_tokens: int = 512,
+    max_tokens: int = 2048,
 ) -> str:
     """
     Generate a TypeQL insert query for one paragraph.

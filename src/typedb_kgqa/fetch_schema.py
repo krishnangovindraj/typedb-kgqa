@@ -32,6 +32,8 @@ def fetch_schema(
             relates = _fetch_relates(tx)
             plays = _fetch_plays(tx)
 
+    entities, relations, owns, relates, plays = prune_base_types(entities, relations, owns, relates, plays)
+
     if compact:
         return _build_compact_schema(entities, attributes, relations, owns, relates, plays)
     else:
@@ -194,3 +196,27 @@ def _build_compact_schema(
             lines.append(f"{relation} links ({', '.join(role_parts)});")
 
     return "\n".join(lines)
+
+
+def prune_base_types(
+    entities: list[str],
+    relations: list[str],
+    owns: list[tuple[str, str]],
+    relates: list[tuple[str, str]],
+    plays: list[tuple[str, str]],
+) -> tuple[list[str], list[str], list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
+    """
+    Remove base types (prefixed with 'base-') from schema collections.
+
+    Returns pruned copies of (entities, relations, owns, relates, plays).
+    """
+    def is_base(name: str) -> bool:
+        return name.startswith("base-")
+
+    entities = [e for e in entities if not is_base(e)]
+    relations = [r for r in relations if not is_base(r)]
+    owns = [(owner, attr) for owner, attr in owns if not is_base(owner)]
+    relates = [(rel, role) for rel, role in relates if not is_base(rel)]
+    plays = [(player, role) for player, role in plays if not is_base(player)]
+
+    return entities, relations, owns, relates, plays
