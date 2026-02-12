@@ -1,0 +1,8 @@
+database delete new-kgqa
+database create new-kgqa
+transaction schema new-kgqa
+
+source base-schema.tql
+source 2wmhqa.tql
+
+commit
