@@ -1,30 +1,64 @@
 define
+# SYSTEM-ATTRIBUTES
 ## Source of info
 attribute text-content, value string;
 # For now, attribute ownership sources just go on the owner.
-relation information-source, relates referenced @card(1), owns text-content;
+relation meta-information-source, relates referenced @card(1), owns text-content;
+attribute meta-page-title, value string; # Uniquely identifies the owner.
 
-
-# SYSTEM-ATTRIBUTES
-attribute uri-identifier, value string; # Uniquely identifies the owner.
-
+# Attributes
 # Every property of an entity has to be a property.
 attribute base-property @abstract;
 
-entity entity-base @abstract, owns uri-identifier @card(0..1), plays information-source:referenced;
-relation relation-base  @abstract, owns uri-identifier @card(0..1), plays information-source:referenced;
+entity base-entity @abstract, owns meta-page-title @card(0..1), plays meta-information-source:referenced;
+relation base-relation  @abstract, owns meta-page-title @card(0..1), plays meta-information-source:referenced;
+
+attribute name @abstract, sub base-property, value string;
+attribute normalised-name sub name;
+base-entity owns normalised-name @card(1);
+attribute alternate-name sub name;
+base-entity owns alternate-name @card(0..);
 
 ############
 # ENTITIES #
 ############
 # AGENT
-entity agentic-entity sub entity-base;
+entity agentic-entity sub base-entity;
 
 entity person, sub agentic-entity;
 entity organisation, sub agentic-entity;
 
-# ARTIFACT
-entity inanimate-object, sub entity-base; # Buildings, lakes, etc?
+entity base-inanimate-object @abstract, sub base-entity; # Buildings, books, etc.
+
+#########
+# PLACE
+#########
+entity base-place sub base-entity;
+entity country sub base-place;
+entity state sub base-place;
+entity city sub base-place;
+
+
+# ---- Geo-containment ----
+relation base-located-in sub base-relation,
+    relates base-contained,
+    relates base-containing;
+
+relation located-in sub base-located-in,
+    relates located-subject as base-contained,
+    relates containing-location as base-containing;
+
+base-inanimate-object plays located-in:located-subject;
+organisation plays located-in:located-subject;
+base-place plays located-in:containing-location;
+
+relation place-located-in sub base-located-in,
+   relates contained-location as base-contained,
+   relates containing-location as base-containing;
+
+base-place,
+   plays place-located-in:contained-location, 
+   plays place-located-in:containing-location;
 
 #########
 # EVENT #
@@ -32,21 +66,38 @@ entity inanimate-object, sub entity-base; # Buildings, lakes, etc?
 attribute occured-at, value datetime;
 attribute lasted-till, value datetime;
 
-entity base-event @abstract, sub entity-base,
+# Makes it easy for comparisons
+occured-at sub base-property; 
+lasted-till sub base-property;
+
+relation base-event @abstract, sub base-relation,
+   relates base-involved,
    owns occured-at,
    owns lasted-till;
 
-# Correlation between events
-relation event-correlation, sub relation-base,
-   relates event @card(0..2);
+# event-location
+relation event-location sub base-located-in,
+   relates located-event as base-contained @card(1),
+   relates containing-location as base-containing @card(1..);
+base-event plays event-location:located-event;
+base-place plays event-location:containing-location;
 
+
+# Correlation between events
+relation event-correlation, sub base-relation,
+   relates event @card(2..);
 base-event plays event-correlation:event;
+
+# Some subtypes
+# Both of people and inanimate objects - e.g. birth of a person, publication of a book
+relation base-life-cycle-event @abstract, sub base-event, 
+   relates base-in-life-of as base-involved @card(1);
 
 ###############
 # ASSOCIATION #
 ###############
 # Typical relations like marriage, parent. `associated` must be specialised
-relation base-association, sub relation-base,
-   relates associated @card(0..);
+relation base-association, sub base-relation,
+   relates base-associated @card(0..);
 
-entity-base plays base-association:associated;
+base-entity plays base-association:base-associated;

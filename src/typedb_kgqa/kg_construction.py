@@ -7,35 +7,34 @@ import sys
 from pathlib import Path
 
 from .fetch_schema import fetch_schema
-from .generate_query import generate_query_local, generate_query_claude
+from .generate_query import generate_query_local, generate_query_claude, extract_typeql
 
 
-def extract_insert(response: str) -> str:
-    """Extract the TypeQL insert query from the LLM response."""
-    text = response.strip()
-    if "```" in text:
-        text = text.split("```")[0].strip()
-    return "insert\n" + text
+def _format_paragraphs(context: list[list]) -> str:
+    """Format a list of [title, sentences] pairs into the prompt's paragraph format."""
+    parts = []
+    for title, sentences in context:
+        sentences_text = " ".join(sentences)
+        parts.append(f"- Title: {title}\n  Sentences: {sentences_text}")
+    return "\n".join(parts)
 
 
 def construct_kg(
     schema: str,
     prompt_template: str,
-    title: str,
-    sentences: list[str],
+    context: list[list],
     use_claude: bool = False,
     model: str = None,
     url: str = "http://localhost:8080/v1",
-    max_tokens: int = 512,
+    max_tokens: int = 4096,
 ) -> str:
     """
-    Generate a TypeQL insert query for one paragraph.
+    Generate a TypeQL insert query for all paragraphs in an example.
 
     Args:
         schema: The TypeQL schema as a string.
-        prompt_template: A prompt template with {schema}, {title}, and {sentences} placeholders.
-        title: The paragraph title (typically the Wikipedia article title).
-        sentences: List of sentences in the paragraph.
+        prompt_template: A prompt template with {schema} and {paragraphs} placeholders.
+        context: List of [title, sentences] pairs from one dataset example.
         use_claude: If True, use Claude API; otherwise use local llama-cpp server.
         model: Model name (defaults based on backend).
         url: URL of llama-cpp server (only used if use_claude=False).
@@ -44,9 +43,9 @@ def construct_kg(
     Returns:
         The generated TypeQL insert query.
     """
-    sentences_text = " ".join(sentences)
-    prompt = prompt_template.format(schema=schema, title=title, sentences=sentences_text)
-
+    paragraphs = _format_paragraphs(context)
+    prompt = prompt_template.format(schema=schema, paragraphs=paragraphs)
+    # print(f"--- DEBUG: PROMPT IS ---\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
     if use_claude:
         model = model or "claude-sonnet-4-20250514"
         text = generate_query_claude(prompt, max_tokens, model)
@@ -54,7 +53,7 @@ def construct_kg(
         model = model or "default"
         text = generate_query_local(url, prompt, max_tokens, model)
 
-    return extract_insert(text)
+    return extract_typeql("```typeql\ninsert\n" + text)
 
 
 def main():
@@ -191,39 +190,39 @@ def main():
         model = args.model or "default"
         print(f"Using local server: {args.url} (model: {model})", file=sys.stderr)
 
-    # Process paragraphs
+    # Process examples
     output_file = open(args.output, "w") if args.output else sys.stdout
-    total_paragraphs = sum(len(example["context"]) for example in dataset)
-    processed = 0
+    total = len(dataset)
 
     try:
-        for i, example in enumerate(dataset):
+        for i, example in enumerate(dataset, 1):
             question_id = example.get("_id", f"example-{i}")
-            for title, sentences in example["context"]:
-                processed += 1
-                print(f"[{processed}/{total_paragraphs}] Processing: {title}", file=sys.stderr)
+            context = example["context"]
+            titles = [title for title, _ in context]
+            print(f"[{i}/{total}] Processing example {question_id} ({len(context)} paragraphs: {', '.join(titles)})", file=sys.stderr)
 
-                try:
-                    insert_query = construct_kg(
-                        schema=schema,
-                        prompt_template=prompt_template,
-                        title=title,
-                        sentences=sentences,
-                        use_claude=args.claude,
-                        model=args.model,
-                        url=args.url,
-                        max_tokens=args.max_tokens,
-                    )
-                    output_file.write(f"# Source: {question_id} / {title}\n")
-                    output_file.write(insert_query)
-                    output_file.write("\n\n")
-                except Exception as e:
-                    print(f"  ERROR processing '{title}': {e}", file=sys.stderr)
+            try:
+                insert_query = construct_kg(
+                    schema=schema,
+                    prompt_template=prompt_template,
+                    context=context,
+                    use_claude=args.claude,
+                    model=args.model,
+                    url=args.url,
+                    max_tokens=args.max_tokens,
+                )
+                output_file.write(f"# Example: {question_id}\n")
+                for title, sentences in context:
+                    output_file.write(f"# {title}: {' '.join(sentences)}\n")
+                output_file.write(insert_query)
+                output_file.write("\n\n")
+            except Exception as e:
+                print(f"  ERROR processing example {question_id}: {e}", file=sys.stderr)
     finally:
         if args.output:
             output_file.close()
 
-    print(f"Done. Processed {processed} paragraphs.", file=sys.stderr)
+    print(f"Done. Processed {total} examples.", file=sys.stderr)
 
 
 if __name__ == "__main__":

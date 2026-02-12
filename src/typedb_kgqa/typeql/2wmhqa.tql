@@ -17,58 +17,31 @@ define
 # ATTRIBUTES  #
 ###############
 
-attribute name, value string;
-attribute gender, value string;
-attribute date-of-birth, value datetime;
-attribute date-of-death, value datetime;
-attribute cause-of-death, value string;
-attribute release-date, value datetime;
-attribute date-established, value datetime;
+attribute gender sub base-property, value string;
 attribute member-role, value string;
+attribute cause-of-death sub base-property, value string;
 
 ######################
 # ENTITY EXTENSIONS  #
 ######################
 
 # -- Person --
-person owns name,
-    owns gender,
-    owns date-of-birth,
-    owns date-of-death,
-    owns cause-of-death;
+person owns gender;
 
 # -- Organisation --
-organisation owns name,
-    owns date-established;
-
 entity school sub organisation;
 entity company sub organisation;
 entity band sub organisation;
 
 # -- Inanimate objects --
-inanimate-object owns name;
+entity base-creative-work sub base-inanimate-object;
 
-entity creative-work sub inanimate-object,
-    owns release-date;
-
-entity film sub creative-work;
-entity song sub creative-work;
-entity album sub creative-work;
-
-entity airport sub inanimate-object;
-entity museum sub inanimate-object;
-entity lake sub inanimate-object;
-
-# -- Location --
-entity location sub entity-base,
-    owns name;
-
-entity country sub location;
-entity city sub location;
+entity film sub base-creative-work;
+entity song sub base-creative-work;
+entity album sub base-creative-work;
 
 # -- Award --
-entity award sub entity-base,
-    owns name;
+entity award sub base-entity;
 
 ##############
 # RELATIONS  #
@@ -77,58 +50,43 @@ entity award sub entity-base,
 # ---- Family ----
 
 relation parentage sub base-association,
-    relates parent as associated,
-    relates child as associated;
+    relates parent as base-associated,
+    relates child as base-associated;
 
 person plays parentage:parent,
     plays parentage:child;
 
 relation marriage sub base-association,
-    relates spouse as associated @card(2);
+    relates spouse as base-associated @card(2);
 
 person plays marriage:spouse;
 
-# ---- Location of birth / death / burial ----
+# person life events
+relation base-person-life-event sub base-life-cycle-event,
+    relates person as base-in-life-of;
+person plays base-person-life-event:person;
 
-relation birth-place sub base-association,
-    relates born-person as associated,
-    relates place-of-birth as associated;
+relation wedding sub base-person-life-event;
+relation birth sub base-person-life-event;
+relation death sub base-person-life-event,
+    owns cause-of-death;
+relation burial sub base-person-life-event;
 
-person plays birth-place:born-person;
-location plays birth-place:place-of-birth;
+# organisation life events
+relation establishment sub base-life-cycle-event,
+    relates established as base-in-life-of;
+organisation plays establishment:established;
 
-relation death-place sub base-association,
-    relates died-person as associated,
-    relates place-of-death as associated;
-
-person plays death-place:died-person;
-location plays death-place:place-of-death;
-
-relation burial-place sub base-association,
-    relates buried-person as associated,
-    relates place-of-burial as associated;
-
-person plays burial-place:buried-person;
-location plays burial-place:place-of-burial;
-
-# ---- Geo-containment ----
-# Used for "are X and Y in the same country?" questions
-# and for origin country of films, organisations, etc.
-
-relation located-in sub base-association,
-    relates located-subject as associated,
-    relates containing-location as associated;
-
-inanimate-object plays located-in:located-subject;
-organisation plays located-in:located-subject;
-location plays located-in:located-subject;
-location plays located-in:containing-location;
+# creative-work life events
+relation release sub base-life-cycle-event,
+    relates released-work as base-in-life-of;
+base-creative-work plays release:released-work;
 
 # ---- Nationality ----
 
 relation nationality sub base-association,
-    relates national as associated,
-    relates nation as associated;
+    relates national as base-associated,
+    relates nation as base-associated;
 
 person plays nationality:national;
 country plays nationality:nation;
@@ -136,8 +94,8 @@ country plays nationality:nation;
 # ---- Employment ----
 
 relation employment sub base-association,
-    relates employee as associated,
-    relates employer as associated;
+    relates employee as base-associated,
+    relates employer as base-associated;
 
 person plays employment:employee;
 organisation plays employment:employer;
@@ -145,8 +103,8 @@ organisation plays employment:employer;
 # ---- Education ----
 
 relation education sub base-association,
-    relates student as associated,
-    relates institution as associated;
+    relates student as base-associated,
+    relates institution as base-associated;
 
 person plays education:student;
 organisation plays education:institution;
@@ -154,8 +112,8 @@ organisation plays education:institution;
 # ---- Film direction ----
 
 relation film-direction sub base-association,
-    relates director as associated,
-    relates directed-film as associated;
+    relates director as base-associated,
+    relates directed-film as base-associated;
 
 person plays film-direction:director;
 film plays film-direction:directed-film;
@@ -163,8 +121,8 @@ film plays film-direction:directed-film;
 # ---- Song performance ----
 
 relation song-performance sub base-association,
-    relates performer as associated,
-    relates performed-song as associated;
+    relates performer as base-associated,
+    relates performed-song as base-associated;
 
 person plays song-performance:performer;
 song plays song-performance:performed-song;
@@ -172,18 +130,18 @@ song plays song-performance:performed-song;
 # ---- Composition (song or film score) ----
 
 relation composition sub base-association,
-    relates composer as associated,
-    relates composed-work as associated;
+    relates composer as base-associated,
+    relates composed-work as base-associated;
 
 person plays composition:composer;
-creative-work plays composition:composed-work;
+base-creative-work plays composition:composed-work;
 
 # ---- Band membership ----
 # member-role captures instrument/position (e.g. "keyboardist", "lead guitarist")
 
 relation band-membership sub base-association,
-    relates member as associated,
-    relates member-band as associated,
+    relates member as base-associated,
+    relates member-band as base-associated,
     owns member-role;
 
 person plays band-membership:member;
@@ -192,8 +150,8 @@ band plays band-membership:member-band;
 # ---- Awards ----
 
 relation award-receipt sub base-association,
-    relates recipient as associated,
-    relates received-award as associated;
+    relates recipient as base-associated,
+    relates received-award as base-associated;
 
 person plays award-receipt:recipient;
 award plays award-receipt:received-award;
@@ -201,8 +159,51 @@ award plays award-receipt:received-award;
 # ---- Publishing ----
 
 relation publishing sub base-association,
-    relates publisher as associated,
-    relates publication as associated;
+    relates publisher as base-associated,
+    relates publication as base-associated;
 
 organisation plays publishing:publisher;
-creative-work plays publishing:publication;
+base-creative-work plays publishing:publication;
+
+
+# Hacks with "other"
+attribute other-type-specifier value string;
+entity other-creative-work sub base-creative-work,
+    owns other-type-specifier;
+
+relation other-association sub base-association,
+    relates other-associated as base-associated @card(0..),
+    owns other-type-specifier;
+base-entity plays other-association:other-associated;
+
+relation other-event sub base-event,
+    relates other-involved as base-involved @card(0..),
+    owns other-type-specifier;
+base-entity plays other-event:other-involved;
+
+
+# Helper functions:
+fun ident($x: base-entity) -> base-entity:
+match $x isa base-entity;
+return first  $x;
+
+fun ternary($cond: boolean, $if: base-entity, $else: base-entity) -> base-entity:
+match 
+  { $cond == true; let $x = ident($if); } or { $cond == false; let $x = ident($else); };
+return first $x;
+
+fun less_or_equal($first: base-property, $second: base-property) -> boolean:
+match 
+  $first <= $second;
+return check;
+
+fun is_same($first: base-entity, $second: base-entity) -> boolean:
+match $first is $second;
+return check;
+
+fun located_in_transitive($contained: base-entity) -> { base-place }:
+match 
+    $_ isa base-located-in, links (base-contained: $contained, base-containing: $containing);
+    $ret isa base-place;
+    { $ret is $containing; } or { let $ret in located_in_transitive($containing); };
+return { $ret };

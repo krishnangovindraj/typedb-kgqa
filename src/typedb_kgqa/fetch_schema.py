@@ -1,5 +1,7 @@
 """Fetch schema from a TypeDB instance and output as a TypeQL define query."""
 
+import argparse
+
 from typedb.driver import TypeDB, Credentials, DriverOptions, TransactionType
 
 
@@ -31,6 +33,8 @@ def fetch_schema(
             owns = _fetch_owns(tx)
             relates = _fetch_relates(tx)
             plays = _fetch_plays(tx)
+
+    entities, relations, owns, relates, plays = prune_base_types(entities, relations, owns, relates, plays)
 
     if compact:
         return _build_compact_schema(entities, attributes, relations, owns, relates, plays)
@@ -65,7 +69,7 @@ def _fetch_relations(tx) -> list[str]:
 
 def _fetch_owns(tx) -> list[tuple[str, str]]:
     """Fetch all owns declarations (owner, attribute)."""
-    results = _get_query_as_rows(tx, "match $x owns $y; not { $x sub! $z; $z owns $y; };")
+    results = _get_query_as_rows(tx, "match $x owns $y;")
     owns = []
     for r in results:
         owner = r.get("x").as_type().get_label()
@@ -76,7 +80,7 @@ def _fetch_owns(tx) -> list[tuple[str, str]]:
 
 def _fetch_relates(tx) -> list[tuple[str, str]]:
     """Fetch all relates declarations (relation, role)."""
-    results = _get_query_as_rows(tx, "match $x relates $y; not { $x sub! $z; $z relates $y; };")
+    results = _get_query_as_rows(tx, "match $x relates $y;")
     relates = []
     for r in results:
         relation = r.get("x").as_relation_type().get_label()
@@ -87,7 +91,7 @@ def _fetch_relates(tx) -> list[tuple[str, str]]:
 
 def _fetch_plays(tx) -> list[tuple[str, str]]:
     """Fetch all plays declarations (player, role)."""
-    results = _get_query_as_rows(tx, "match $x plays $y; not { $x sub! $z; $z plays $y; };")
+    results = _get_query_as_rows(tx, "match $x plays $y;")
     plays = []
     for r in results:
         player = r.get("x").as_type().get_label()
@@ -161,15 +165,15 @@ def _build_compact_schema(
         owns_by_owner[owner].append(attr)
 
     # Group relates by relation: {relation: [role1, role2, ...]}
-    relates_by_rel = defaultdict(list)
+    relates_by_rel = defaultdict(set)
     for relation, role in relates:
-        relates_by_rel[relation].append(role)
+        relates_by_rel[relation].add(role)
 
     # Group plays by role: {role: [player1, player2, ...]}
-    plays_by_role = defaultdict(list)
+    plays_by_role = defaultdict(set)
     for player, role in plays:
-        plays_by_role[role].append(player)
-
+        plays_by_role[role].add(player)
+    
     # Output ownerships
     lines.append("# Has")
     for owner in sorted(entities + relations):
@@ -194,3 +198,77 @@ def _build_compact_schema(
             lines.append(f"{relation} links ({', '.join(role_parts)});")
 
     return "\n".join(lines)
+
+
+def prune_base_types(
+    entities: list[str],
+    relations: list[str],
+    owns: list[tuple[str, str]],
+    relates: list[tuple[str, str]],
+    plays: list[tuple[str, str]],
+) -> tuple[list[str], list[str], list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
+    """
+    Remove base types (prefixed with 'base-') from schema collections.
+
+    Returns pruned copies of (entities, relations, owns, relates, plays).
+    """
+    def is_base(name: str) -> bool:
+        return name.startswith("base-") or name.startswith("meta-")
+
+    entities = [e for e in entities if not is_base(e)]
+    relations = [r for r in relations if not is_base(r)]
+    owns = [(owner, attr) for owner, attr in owns if not is_base(owner) and not is_base(attr)]
+    relates = [(rel, role) for rel, role in relates if not is_base(rel) and not is_base(role)]
+    plays = [(player, role) for player, role in plays if not is_base(player) and not is_base(role)]
+
+    return entities, relations, owns, relates, plays
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Fetch schema from a TypeDB instance"
+    )
+    parser.add_argument(
+        "--typedb-address",
+        type=str,
+        default="localhost:1729",
+        help="TypeDB server address (default: localhost:1729)",
+    )
+    parser.add_argument(
+        "--database", "-d",
+        type=str,
+        required=True,
+        help="TypeDB database name",
+    )
+    parser.add_argument(
+        "--typedb-username",
+        type=str,
+        default="admin",
+        help="TypeDB username (default: admin)",
+    )
+    parser.add_argument(
+        "--typedb-password",
+        type=str,
+        default="password",
+        help="TypeDB password (default: password)",
+    )
+    parser.add_argument(
+        "--compact",
+        action="store_true",
+        help="Use compact schema representation",
+    )
+
+    args = parser.parse_args()
+
+    schema = fetch_schema(
+        address=args.typedb_address,
+        database=args.database,
+        username=args.typedb_username,
+        password=args.typedb_password,
+        compact=args.compact,
+    )
+    print(schema)
+
+
+if __name__ == "__main__":
+    main()

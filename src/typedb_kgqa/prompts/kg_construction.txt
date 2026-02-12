@@ -1,13 +1,23 @@
-You are a knowledge graph construction assistant. Given a TypeQL schema and a paragraph of text, extract entities and relationships from the paragraph and produce TypeQL `insert` statements.
+You are a knowledge graph construction assistant. Given a TypeQL schema and a set of paragraphs, extract entities and relationships and produce TypeQL `insert` statements.
 
 ## Rules
-- Only use entity types, relation types, and attribute types that exist in the schema below.
-- Skip any information in the paragraph that does not map to a type in the schema.
-- Only set `uri-identifier` on the entity that the title refers to (the subject of the paragraph). All other entities should NOT have a `uri-identifier` — they will get one when their own page is processed.
+- Write one put statement per line.
+- The first time an entity is mentioned must mention its type and normalised-name.
+- The first time a relation is mentioned must mention its type, and all linked role-players.
+- Subsequent mentions of the same entity or relation should reuse the same variable.
+- Do not insert duplicate entities; reuse variables for the same entity across paragraphs.
+- Skip any information in the paragraphs that cannot be expressed in the schema.
+- Only set `meta-page-title` on the entity that a paragraph's title refers to.
 - For dates, use the TypeQL datetime format: yyyy-mm-ddTHH:MM:SS (e.g., 2009-01-01T00:00:00 for the year 2009).
 - If only a year is given, use January 1st of that year.
-- Each entity should be inserted with its `name`.
-- Do not insert duplicate entities; reuse variables for the same entity.
+- Normalise all names: lowercase, strip punctuation, and transliterate unicode to ASCII. (e.g., "Żuławski" → "zulawski").
+  - If a name contains middle names, titles, or disambiguators, strip these and create an `alternate-name` including these. e.g., "John Smith (actor)" would have `normalised-name` "john smith actor" and an `alternate-name` "john smith".
+- Only use entity types, relation types, and attribute types that exist in the schema below.
+- If a type does not match, see if it fits the types prefixed "other-" and use the `other-type-specifier` attribute. If not, skip it.
+
+Some schema specific rules:
+- Always try to specify the gender of a person.
+- Marriages must 
 
 ## Examples
 
@@ -15,69 +25,73 @@ The following examples use this schema:
 ```
 $var isa city | country | film | person;
 # Has
-person has date-of-birth | date-of-death | name;
-film has name | release-date;
-city has name;
-country has name;
+person has date-of-birth | date-of-death | normalised-name | alternate-name;
+film has normalised-name | alternate-name | release-date;
+city has normalised-name | alternate-name;
+country has normalised-name | alternate-name;
 
 # Links
 birth-place links (born-person: person, place-of-birth: city | country);
 film-direction links (director: person, directed-film: film);
 nationality links (national: person, nation: country);
 parentage links (parent: person, child: person);
+marriage links (spouse: person);
 ```
 
-### Example 1
-Title: Xawery Żuławski
-Sentences: Xawery Żuławski (born 22 December 1971 in Warsaw) is a Polish film director. He is the son of actress Małgorzata Braunek and director Andrzej Żuławski.
+### Example
+Paragraphs:
+- Title: Xawery Żuławski
+  Sentences: Xawery Żuławski (born 22 December 1971 in Warsaw) is a Polish film director. He is the son of actress Małgorzata Braunek and director Andrzej Żuławski.
+- Title: Polish-Russian War (film)
+  Sentences: Polish-Russian War (Wojna polsko-ruska) is a 2009 Polish film directed by Xawery Żuławski based on the novel Polish-Russian War under the white-red flag by Dorota Masłowska.
+- Title: Maheen Khan
+  Sentences: Maheen Khan is a Pakistani fashion and costume designer, also an award winner fashion designer. She undertook embroidery for the film Snow White and the Huntsman.
 
 ```typeql
-insert
-$xawery isa person, has uri-identifier "Xawery Żuławski", has name "Xawery Żuławski", has date-of-birth 1971-12-22T00:00:00;
-$warsaw isa city, has name "Warsaw";
-$birth-place-1 (born-person: $xawery, place-of-birth: $warsaw) isa birth-place;
-$poland isa country, has name "Poland";
-$nat-1 (national: $xawery, nation: $poland) isa nationality;
-$malgorzata isa person, has name "Małgorzata Braunek";
-$andrzej isa person, has name "Andrzej Żuławski";
-$parentage-1 (parent: $malgorzata, child: $xawery) isa parentage;
-$parentage-2 (parent: $andrzej, child: $xawery) isa parentage;
+put $xawery isa person, has normalised-name "xawery zulawski";
+put $xawery has meta-page-title "Xawery Żuławski";
+put $xawery has gender "male";
+put $birth-xawery isa birth, links (person: $xawery), has occured-at 1971-12-22T00:00:00;
+put $warsaw isa city, has normalised-name "warsaw";
+put $location-birth-xavery isa event-location, links (event: $birth-1, location: $warsaw);
+put $poland isa country, has normalised-name "poland";
+put $nationality-xawery isa nationality, links (national: $xawery, nation: $poland);
+put $malgorzata isa person, has normalised-name "malgorzata braunek";
+put $malgorzata has gender "female";
+put $andrzej isa person, has normalised-name "andrzej zulawski";
+put $andrzej has gender "male";
+put $parentage-malgorzata-xawery isa parentage, links (parent: $malgorzata, child: $xawery);
+put $parentage-andrzej-xawery isa parentage, links (parent: $andrzej, child: $xawery);
+put $polish-russian-war has normalised-name "polish russian war film";
+put $polish-russian-war isa film, has alternate-name "polish russian war";
+put $polish-russian-war has meta-page-title "Polish-Russian War (film)";
+put $release-$polish-russian-war isa release, links (released-work: $polish-russian-war), has occured-at 2009-01-01T00:00:00;
+put $direction-polish-russian-war isa film-direction, links (director: $xawery, directed-film: $polish-russian-war);
+put $maheen isa person, has normalised-name "maheen khan";
+put $maheen has meta-page-title "Maheen Khan";
+put $maheen has gender "female";
+put $pakistan isa country, has normalised-name "pakistan";
+put $nationality-maheen isa nationality, links (national: $maheen, nation: $pakistan);
 ```
 
-### Example 2
-Title: Polish-Russian War (film)
-Sentences: Polish-Russian War (Wojna polsko-ruska) is a 2009 Polish film directed by Xawery Żuławski based on the novel Polish-Russian War under the white-red flag by Dorota Masłowska.
-
+Note: "fashion and costume designer" has no schema type, so it is skipped. The film "Snow White and the Huntsman" is mentioned but no director/performer relationship to Maheen Khan fits the schema, so it is also skipped. Xawery Żuławski appears in both paragraphs and is reused as `$xawery`.
+Note: In certain relations such as marirage, the role can be repeated to link two spouses in the same marriage. 
 ```typeql
-insert
-$film isa film, has uri-identifier "Polish-Russian War (film)", has name "Polish-Russian War", has release-date 2009-01-01T00:00:00;
-$xawery isa person, has name "Xawery Żuławski";
-$direction-1 (director: $xawery, directed-film: $film) isa film-direction;
+put $marriage is marriage, links (spouse: $person1, spouse: $person2);
 ```
-
-### Example 3
-Title: Maheen Khan
-Sentences: Maheen Khan is a Pakistani fashion and costume designer, also an award winner fashion designer. She undertook embroidery for the film Snow White and the Huntsman.
-
-```typeql
-insert
-$maheen isa person, has uri-identifier "Maheen Khan", has name "Maheen Khan";
-$pakistan isa country, has name "Pakistan";
-$nat-1 (national: $maheen, nation: $pakistan) isa nationality;
-```
-
-Note: "fashion and costume designer" has no schema type, so it is skipped. The film "Snow White and the Huntsman" is mentioned but no director/performer relationship to Maheen Khan fits the schema, so it is also skipped.
 
 ## Task
-Extract entities and relationships from the following paragraph and produce TypeQL insert statements according to the given schema.
+Extract entities and relationships from the following paragraphs and produce TypeQL insert statements according to the given schema. Remember to close the markdown code block with '```'
 
-## Schema
+### Schema
 ```typeql
 {schema}
 ```
 
-Title: {title}
-Sentences: {sentences}
+### Paragraphs
+{paragraphs}
+
+### TypeQL put statements
 
 ```typeql
-insert
+

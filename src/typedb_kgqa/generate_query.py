@@ -2,6 +2,7 @@
 """Generate TypeQL queries from natural language questions using an LLM."""
 
 import argparse
+import sys
 from pathlib import Path
 
 from .fetch_schema import fetch_schema
@@ -39,16 +40,19 @@ def generate_query_claude(
     max_tokens: int = 256,
     model: str = "claude-sonnet-4-20250514",
 ) -> str:
-    """Generate using Claude API."""
-    import anthropic
+    """Generate using Claude CLI (claude -p via stdin)."""
+    import subprocess
 
-    client = anthropic.Anthropic()
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
+    args = ["claude", "--model", model, "-p", "\"Output only the completion and nothing else\""]
+    result = subprocess.run(
+        args,
+        input=prompt,
+        capture_output=True,
+        text=True,
     )
-    return response.content[0].text
+    if result.returncode != 0:
+        raise RuntimeError(f"claude CLI failed (exit {result.returncode}): {result.stderr}")
+    return result.stdout
 
 
 def generate_query(
@@ -76,24 +80,30 @@ def generate_query(
         The generated TypeQL query.
     """
     prompt = prompt_template.format(schema=schema, question=question)
-    print(f"--- DEBUG: PROMPT IS ---\n{prompt}\n--- END PROMPT ---")
+    # print(f"--- DEBUG: PROMPT IS ---\n{prompt}\n--- END PROMPT ---", file=sys.stderr)
     if use_claude:
         model = model or "claude-sonnet-4-20250514"
         text = generate_query_claude(prompt, max_tokens, model)
     else:
         model = model or "default"
         text = generate_query_local(url, prompt, max_tokens, model)
+    return extract_typeql("```typeql\nmatch\n" + text)
 
-    return extract_query(text)
 
-
-def extract_query(response: str) -> str:
-    """Extract the TypeQL query from the LLM response."""
+def extract_typeql(response: str) -> str:
+    """Extract TypeQL from an LLM response by stripping markdown fences and surrounding text."""
+    from sys import stderr
     text = response.strip()
-    if "```" in text:
-        text = text.split("```")[0].strip()
-    return "match\n" + text
-
+    # print(f"EXTRACT FROM:\n---\n{text}\n---\n", file=stderr)
+    start_marker = "```typeql"
+    end_marker = "```"
+    typeql_start = text.rfind(start_marker) + len(start_marker)
+    typeql_end = text.rfind(end_marker, typeql_start)
+    typeql_end = typeql_end if typeql_end > -1 else len(text)
+    # print(f"Get [{typeql_start}, {typeql_end}] =:\n<<\n{text[typeql_start:typeql_end]}\n>>", file=stderr)
+    assert typeql_start != -1 and typeql_end != -1
+    extracted = text[typeql_start:typeql_end]
+    return extracted + "end;"
 
 def main():
     parser = argparse.ArgumentParser(
@@ -164,10 +174,16 @@ def main():
         help="Path to prompt template file (must contain {schema} and {question} placeholders)",
     )
     parser.add_argument(
-        "--question", "-q",
+        "--questions", "-q",
         type=str,
         required=True,
-        help="The question to translate to TypeQL",
+        help="Path to a file with one question per line",
+    )
+    parser.add_argument(
+        "--output", "-o",
+        type=str,
+        default=None,
+        help="Output file path (default: stdout)",
     )
 
     args = parser.parse_args()
@@ -197,25 +213,32 @@ def main():
     if args.compact:
         print("Using compact schema representation")
 
-    # Generate query
-    print(f"Question: {args.question}")
-    print("Generating TypeQL query...")
-    print()
+    # Load questions
+    questions = [line.strip() for line in Path(args.questions).read_text().splitlines() if line.strip()]
+    print(f"Loaded {len(questions)} questions", file=sys.stderr)
 
-    query = generate_query(
-        schema=schema,
-        prompt_template=prompt_template,
-        question=args.question,
-        max_tokens=args.max_tokens,
-        use_claude=args.claude,
-        model=args.model,
-        url=args.url,
-    )
+    # Generate queries
+    output_file = open(args.output, "w") if args.output else sys.stdout
+    try:
+        for i, question in enumerate(questions, 1):
+            print(f"[{i}/{len(questions)}] Question: {question}", file=sys.stderr)
 
-    print("Generated query:")
-    print("-" * 40)
-    print(query)
-    print("-" * 40)
+            query = generate_query(
+                schema=schema,
+                prompt_template=prompt_template,
+                question=question,
+                max_tokens=args.max_tokens,
+                use_claude=args.claude,
+                model=args.model,
+                url=args.url,
+            )
+
+            output_file.write(f"# Question: {question}\n")
+            output_file.write(query)
+            output_file.write("\n\n")
+    finally:
+        if args.output:
+            output_file.close()
 
 
 if __name__ == "__main__":
