@@ -1,0 +1,7 @@
+database delete vanilla-kgqa
+database create vanilla-kgqa
+transaction schema vanilla-kgqa
+
+source vanilla-schema.tql
+
+commit

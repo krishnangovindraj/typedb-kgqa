@@ -7,53 +7,7 @@ from pathlib import Path
 
 from .fetch_schema import fetch_schema
 
-
-def generate_query_local(
-    url: str,
-    prompt: str,
-    max_tokens: int = 256,
-    model: str = "default",
-) -> str:
-    """Generate using local llama-cpp server."""
-    from openai import OpenAI
-
-    client = OpenAI(base_url=url, api_key="not-needed")
-    response = client.completions.create(
-        model=model,
-        prompt=prompt,
-        max_tokens=max_tokens,
-        stop=["```", "##", "Question:"],
-        temperature=0.1,
-    )
-
-    # Handle both standard OpenAI format and llama-cpp server format
-    if response.choices:
-        return response.choices[0].text
-    elif hasattr(response, "content") and response.content:
-        return response.content
-    else:
-        raise RuntimeError(f"Could not extract text from response: {response}")
-
-
-def generate_query_claude(
-    prompt: str,
-    max_tokens: int = 256,
-    model: str = "claude-sonnet-4-20250514",
-) -> str:
-    """Generate using Claude CLI (claude -p via stdin)."""
-    import subprocess
-
-    args = ["claude", "--model", model, "-p", "\"Output only the completion and nothing else\""]
-    result = subprocess.run(
-        args,
-        input=prompt,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"claude CLI failed (exit {result.returncode}): {result.stderr}")
-    return result.stdout
-
+from .common import generate_query_local, generate_query_claude, extract_typeql
 
 def generate_query(
     schema: str,
@@ -88,22 +42,6 @@ def generate_query(
         model = model or "default"
         text = generate_query_local(url, prompt, max_tokens, model)
     return extract_typeql("```typeql\nmatch\n" + text)
-
-
-def extract_typeql(response: str) -> str:
-    """Extract TypeQL from an LLM response by stripping markdown fences and surrounding text."""
-    from sys import stderr
-    text = response.strip()
-    # print(f"EXTRACT FROM:\n---\n{text}\n---\n", file=stderr)
-    start_marker = "```typeql"
-    end_marker = "```"
-    typeql_start = text.rfind(start_marker) + len(start_marker)
-    typeql_end = text.rfind(end_marker, typeql_start)
-    typeql_end = typeql_end if typeql_end > -1 else len(text)
-    # print(f"Get [{typeql_start}, {typeql_end}] =:\n<<\n{text[typeql_start:typeql_end]}\n>>", file=stderr)
-    assert typeql_start != -1 and typeql_end != -1
-    extracted = text[typeql_start:typeql_end]
-    return extracted + "end;"
 
 def main():
     parser = argparse.ArgumentParser(
