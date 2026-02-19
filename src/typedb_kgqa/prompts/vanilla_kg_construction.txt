@@ -1,0 +1,163 @@
+You are a knowledge graph construction assistant. Given a schema and a set of paragraphs, extract entities, relationships, and properties and produce TypeQL `put` statements.
+
+## Schema overview
+
+The schema has three node types:
+- `entity-node`: Represents a real-world entity (person, place, film, etc.). The `label` should be descriptive: `"type:identifier"` (e.g. `"person:xawery-zulawski"`, `"city:warsaw"`, `"film:polish-russian-war"`).
+- `relation-node`: Represents a directed relationship between two nodes. The `label` should use a directional verb form: `"relation:subject:object"` or at minimum `"relation:subject"` (e.g. `"mother-of:malgorzata-braunek:xawery-zulawski"`, `"national-of:xawery-zulawski:poland"`, `"has-gender:xawery-zulawski:male"`). Prefer specific directional labels like "mother-of", "father-of" over generic ones like "parent-of". Connects nodes via the `related` role.
+- `property-node`: Represents a property value. The `label` should be descriptive: `"property-type:value"` (e.g. `"name:xawery-zulawski"`, `"gender:male"`, `"date-of-birth:1971-12-22"`). Holds a typed value in one of: `string-property`, `date-property`, `numeric-property`, `boolean-property`.
+
+To attach a property to an entity or relate entities, create a `relation-node` linking them.
+
+Each paragraph comes from a `meta-document` (identified by `meta-page-title`). Link every node you create to its source `meta-document` via `meta-knowledge-source`.
+
+## Rules
+- Write one put statement per line.
+- The first mention of a node must include its type and label.
+- Reuse variables for the same entity across paragraphs.
+- Only set `meta-page-title` on the `entity-node` that a paragraph's title refers to.
+- For dates, use the TypeQL date format: yyyy-mm-dd (e.g., 2009-01-01 for the year 2009).
+- If only a year is given, use January 1st of that year.
+- Normalise all name values: lowercase, strip punctuation, transliterate unicode to ASCII (e.g., "Żuławski" -> "zulawski").
+- Extract as much information as possible from the paragraphs.
+- Always try to infer and specify the gender of a person.
+- For each paragraph, `put` the `meta-document` by its `meta-page-title`, then link every node created from that paragraph to it via `meta-knowledge-source`.
+
+## Example
+
+Paragraphs:
+- Title: Xawery Żuławski
+  Sentences: Xawery Żuławski (born 22 December 1971 in Warsaw) is a Polish film director. He is the son of actress Małgorzata Braunek and director Andrzej Żuławski.
+- Title: Polish-Russian War (film)
+  Sentences: Polish-Russian War (Wojna polsko-ruska) is a 2009 Polish film directed by Xawery Żuławski based on the novel Polish-Russian War under the white-red flag by Dorota Masłowska.
+- Title: Maheen Khan
+  Sentences: Maheen Khan is a Pakistani fashion and costume designer, also an award winner fashion designer. She undertook embroidery for the film Snow White and the Huntsman.
+
+```typeql
+# --- sources ---
+put $doc-xawery isa meta-document, has meta-page-title "Xawery Żuławski";
+put $doc-prw isa meta-document, has meta-page-title "Polish-Russian War (film)";
+put $doc-maheen isa meta-document, has meta-page-title "Maheen Khan";
+# --- Xawery Żuławski ---
+put $xawery isa entity-node, has label "person:xawery-zulawski";
+put $xawery has meta-page-title "Xawery Żuławski";
+put $ks-xawery isa meta-knowledge-source, links (knowledge: $xawery, source: $doc-xawery);
+put $xawery-name isa property-node, has label "name:xawery-zulawski", has string-property "xawery zulawski";
+put $ks-xawery-name isa meta-knowledge-source, links (knowledge: $xawery-name, source: $doc-xawery);
+put $r-xawery-name isa relation-node, has label "has-name:xawery-zulawski", links (related: $xawery, related: $xawery-name);
+put $ks-r-xawery-name isa meta-knowledge-source, links (knowledge: $r-xawery-name, source: $doc-xawery);
+put $xawery-gender isa property-node, has label "gender:male", has string-property "male";
+put $ks-xawery-gender isa meta-knowledge-source, links (knowledge: $xawery-gender, source: $doc-xawery);
+put $r-xawery-gender isa relation-node, has label "has-gender:xawery-zulawski:male", links (related: $xawery, related: $xawery-gender);
+put $ks-r-xawery-gender isa meta-knowledge-source, links (knowledge: $r-xawery-gender, source: $doc-xawery);
+put $xawery-dob isa property-node, has label "date-of-birth:1971-12-22", has date-property 1971-12-22;
+put $ks-xawery-dob isa meta-knowledge-source, links (knowledge: $xawery-dob, source: $doc-xawery);
+put $r-xawery-dob isa relation-node, has label "has-date-of-birth:xawery-zulawski", links (related: $xawery, related: $xawery-dob);
+put $ks-r-xawery-dob isa meta-knowledge-source, links (knowledge: $r-xawery-dob, source: $doc-xawery);
+put $xawery-occupation isa property-node, has label "occupation:film-director", has string-property "film director";
+put $ks-xawery-occupation isa meta-knowledge-source, links (knowledge: $xawery-occupation, source: $doc-xawery);
+put $r-xawery-occupation isa relation-node, has label "has-occupation:xawery-zulawski:film-director", links (related: $xawery, related: $xawery-occupation);
+put $ks-r-xawery-occupation isa meta-knowledge-source, links (knowledge: $r-xawery-occupation, source: $doc-xawery);
+# birth place
+put $warsaw isa entity-node, has label "city:warsaw";
+put $ks-warsaw isa meta-knowledge-source, links (knowledge: $warsaw, source: $doc-xawery);
+put $warsaw-name isa property-node, has label "name:warsaw", has string-property "warsaw";
+put $ks-warsaw-name isa meta-knowledge-source, links (knowledge: $warsaw-name, source: $doc-xawery);
+put $r-warsaw-name isa relation-node, has label "has-name:warsaw", links (related: $warsaw, related: $warsaw-name);
+put $ks-r-warsaw-name isa meta-knowledge-source, links (knowledge: $r-warsaw-name, source: $doc-xawery);
+put $r-xawery-birthplace isa relation-node, has label "born-in:xawery-zulawski:warsaw", links (related: $xawery, related: $warsaw);
+put $ks-r-xawery-birthplace isa meta-knowledge-source, links (knowledge: $r-xawery-birthplace, source: $doc-xawery);
+# nationality
+put $poland isa entity-node, has label "country:poland";
+put $ks-poland isa meta-knowledge-source, links (knowledge: $poland, source: $doc-xawery);
+put $poland-name isa property-node, has label "name:poland", has string-property "poland";
+put $ks-poland-name isa meta-knowledge-source, links (knowledge: $poland-name, source: $doc-xawery);
+put $r-poland-name isa relation-node, has label "has-name:poland", links (related: $poland, related: $poland-name);
+put $ks-r-poland-name isa meta-knowledge-source, links (knowledge: $r-poland-name, source: $doc-xawery);
+put $r-xawery-nationality isa relation-node, has label "national-of:xawery-zulawski:poland", links (related: $xawery, related: $poland);
+put $ks-r-xawery-nationality isa meta-knowledge-source, links (knowledge: $r-xawery-nationality, source: $doc-xawery);
+# parents
+put $malgorzata isa entity-node, has label "person:malgorzata-braunek";
+put $ks-malgorzata isa meta-knowledge-source, links (knowledge: $malgorzata, source: $doc-xawery);
+put $malgorzata-name isa property-node, has label "name:malgorzata-braunek", has string-property "malgorzata braunek";
+put $ks-malgorzata-name isa meta-knowledge-source, links (knowledge: $malgorzata-name, source: $doc-xawery);
+put $r-malgorzata-name isa relation-node, has label "has-name:malgorzata-braunek", links (related: $malgorzata, related: $malgorzata-name);
+put $ks-r-malgorzata-name isa meta-knowledge-source, links (knowledge: $r-malgorzata-name, source: $doc-xawery);
+put $malgorzata-gender isa property-node, has label "gender:female", has string-property "female";
+put $ks-malgorzata-gender isa meta-knowledge-source, links (knowledge: $malgorzata-gender, source: $doc-xawery);
+put $r-malgorzata-gender isa relation-node, has label "has-gender:malgorzata-braunek:female", links (related: $malgorzata, related: $malgorzata-gender);
+put $ks-r-malgorzata-gender isa meta-knowledge-source, links (knowledge: $r-malgorzata-gender, source: $doc-xawery);
+put $andrzej isa entity-node, has label "person:andrzej-zulawski";
+put $ks-andrzej isa meta-knowledge-source, links (knowledge: $andrzej, source: $doc-xawery);
+put $andrzej-name isa property-node, has label "name:andrzej-zulawski", has string-property "andrzej zulawski";
+put $ks-andrzej-name isa meta-knowledge-source, links (knowledge: $andrzej-name, source: $doc-xawery);
+put $r-andrzej-name isa relation-node, has label "has-name:andrzej-zulawski", links (related: $andrzej, related: $andrzej-name);
+put $ks-r-andrzej-name isa meta-knowledge-source, links (knowledge: $r-andrzej-name, source: $doc-xawery);
+put $andrzej-gender isa property-node, has label "gender:male", has string-property "male";
+put $ks-andrzej-gender isa meta-knowledge-source, links (knowledge: $andrzej-gender, source: $doc-xawery);
+put $r-andrzej-gender isa relation-node, has label "has-gender:andrzej-zulawski:male", links (related: $andrzej, related: $andrzej-gender);
+put $ks-r-andrzej-gender isa meta-knowledge-source, links (knowledge: $r-andrzej-gender, source: $doc-xawery);
+put $r-mother-xawery isa relation-node, has label "mother-of:malgorzata-braunek:xawery-zulawski", links (related: $malgorzata, related: $xawery);
+put $ks-r-mother-xawery isa meta-knowledge-source, links (knowledge: $r-mother-xawery, source: $doc-xawery);
+put $r-father-xawery isa relation-node, has label "father-of:andrzej-zulawski:xawery-zulawski", links (related: $andrzej, related: $xawery);
+put $ks-r-father-xawery isa meta-knowledge-source, links (knowledge: $r-father-xawery, source: $doc-xawery);
+# --- Polish-Russian War (film) ---
+put $prw-film isa entity-node, has label "film:polish-russian-war";
+put $prw-film has meta-page-title "Polish-Russian War (film)";
+put $ks-prw isa meta-knowledge-source, links (knowledge: $prw-film, source: $doc-prw);
+put $prw-name isa property-node, has label "name:polish-russian-war", has string-property "polish russian war";
+put $ks-prw-name isa meta-knowledge-source, links (knowledge: $prw-name, source: $doc-prw);
+put $r-prw-name isa relation-node, has label "has-name:polish-russian-war", links (related: $prw-film, related: $prw-name);
+put $ks-r-prw-name isa meta-knowledge-source, links (knowledge: $r-prw-name, source: $doc-prw);
+put $prw-release isa property-node, has label "release-date:2009-01-01", has date-property 2009-01-01;
+put $ks-prw-release isa meta-knowledge-source, links (knowledge: $prw-release, source: $doc-prw);
+put $r-prw-release isa relation-node, has label "has-release-date:polish-russian-war", links (related: $prw-film, related: $prw-release);
+put $ks-r-prw-release isa meta-knowledge-source, links (knowledge: $r-prw-release, source: $doc-prw);
+put $r-prw-direction isa relation-node, has label "directed:xawery-zulawski:polish-russian-war", links (related: $xawery, related: $prw-film);
+put $ks-r-prw-direction isa meta-knowledge-source, links (knowledge: $r-prw-direction, source: $doc-prw);
+# --- Maheen Khan ---
+put $maheen isa entity-node, has label "person:maheen-khan";
+put $maheen has meta-page-title "Maheen Khan";
+put $ks-maheen isa meta-knowledge-source, links (knowledge: $maheen, source: $doc-maheen);
+put $maheen-name isa property-node, has label "name:maheen-khan", has string-property "maheen khan";
+put $ks-maheen-name isa meta-knowledge-source, links (knowledge: $maheen-name, source: $doc-maheen);
+put $r-maheen-name isa relation-node, has label "has-name:maheen-khan", links (related: $maheen, related: $maheen-name);
+put $ks-r-maheen-name isa meta-knowledge-source, links (knowledge: $r-maheen-name, source: $doc-maheen);
+put $maheen-gender isa property-node, has label "gender:female", has string-property "female";
+put $ks-maheen-gender isa meta-knowledge-source, links (knowledge: $maheen-gender, source: $doc-maheen);
+put $r-maheen-gender isa relation-node, has label "has-gender:maheen-khan:female", links (related: $maheen, related: $maheen-gender);
+put $ks-r-maheen-gender isa meta-knowledge-source, links (knowledge: $r-maheen-gender, source: $doc-maheen);
+put $maheen-occupation isa property-node, has label "occupation:fashion-and-costume-designer", has string-property "fashion and costume designer";
+put $ks-maheen-occupation isa meta-knowledge-source, links (knowledge: $maheen-occupation, source: $doc-maheen);
+put $r-maheen-occupation isa relation-node, has label "has-occupation:maheen-khan:fashion-and-costume-designer", links (related: $maheen, related: $maheen-occupation);
+put $ks-r-maheen-occupation isa meta-knowledge-source, links (knowledge: $r-maheen-occupation, source: $doc-maheen);
+put $pakistan isa entity-node, has label "country:pakistan";
+put $ks-pakistan isa meta-knowledge-source, links (knowledge: $pakistan, source: $doc-maheen);
+put $pakistan-name isa property-node, has label "name:pakistan", has string-property "pakistan";
+put $ks-pakistan-name isa meta-knowledge-source, links (knowledge: $pakistan-name, source: $doc-maheen);
+put $r-pakistan-name isa relation-node, has label "has-name:pakistan", links (related: $pakistan, related: $pakistan-name);
+put $ks-r-pakistan-name isa meta-knowledge-source, links (knowledge: $r-pakistan-name, source: $doc-maheen);
+put $r-maheen-nationality isa relation-node, has label "national-of:maheen-khan:pakistan", links (related: $maheen, related: $pakistan);
+put $ks-r-maheen-nationality isa meta-knowledge-source, links (knowledge: $r-maheen-nationality, source: $doc-maheen);
+# snow white and the huntsman
+put $swath isa entity-node, has label "film:snow-white-and-the-huntsman";
+put $ks-swath isa meta-knowledge-source, links (knowledge: $swath, source: $doc-maheen);
+put $swath-name isa property-node, has label "name:snow-white-and-the-huntsman", has string-property "snow white and the huntsman";
+put $ks-swath-name isa meta-knowledge-source, links (knowledge: $swath-name, source: $doc-maheen);
+put $r-swath-name isa relation-node, has label "has-name:snow-white-and-the-huntsman", links (related: $swath, related: $swath-name);
+put $ks-r-swath-name isa meta-knowledge-source, links (knowledge: $r-swath-name, source: $doc-maheen);
+put $r-maheen-swath isa relation-node, has label "embroidered-for:maheen-khan:snow-white-and-the-huntsman", links (related: $maheen, related: $swath);
+put $ks-r-maheen-swath isa meta-knowledge-source, links (knowledge: $r-maheen-swath, source: $doc-maheen);
+```
+
+Note: Xawery Żuławski appears in both paragraphs and is reused as `$xawery`.
+
+## Task
+Extract entities, relationships, and properties from the following paragraphs and produce TypeQL put statements. Remember to close the markdown code block with '```'
+
+### Paragraphs
+{paragraphs}
+
+### TypeQL put statements
+
+```typeql

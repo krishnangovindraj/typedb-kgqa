@@ -1,0 +1,60 @@
+define
+
+#################
+# VANILLA SCHEMA
+#################
+# A flat, concrete schema — no abstract types or deep inheritance.
+# Uses a `label` attribute on entities and relations to capture
+# what would otherwise be encoded via subtypes.
+
+###############
+# META / SYSTEM
+###############
+
+attribute text-content, value string;
+attribute meta-page-title, value string;
+
+entity meta-document, owns meta-page-title, owns text-content;
+
+relation meta-knowledge-source, relates knowledge @card(1), relates source;
+meta-document plays meta-knowledge-source:source;
+
+###############
+# ATTRIBUTES
+###############
+
+attribute label, value string;        # Replaces subtyping — e.g. "film", "song", "school"
+
+entity entity-node,
+    owns meta-page-title @card(0..1),
+    owns label,
+    plays meta-knowledge-source:knowledge,
+    plays relation-node:related;
+
+# ---- Associations ----
+# parentage, marriage, nationality, employment, education,
+# film-direction, song-performance, composition, band-membership,
+# award-receipt, publishing, etc.
+# Use `label` to distinguish (e.g. label "parentage", label "marriage").
+
+relation relation-node,
+    owns meta-page-title @card(0..1),
+    owns label,
+    relates related @card(0..),
+    plays meta-knowledge-source:knowledge;
+
+
+attribute property @abstract;
+attribute string-property sub property, value string;
+attribute date-property sub property, value date;
+attribute numeric-property sub property, value double;
+attribute boolean-property sub property, value boolean;
+
+entity property-node,
+    owns label,
+    plays relation-node:related,
+    plays meta-knowledge-source:knowledge,
+    owns string-property,
+    owns date-property,
+    owns numeric-property,
+    owns boolean-property;

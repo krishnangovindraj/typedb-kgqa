@@ -71,6 +71,7 @@ def construct_kg(
     Returns:
         The generated TypeQL put statements.
     """
+    # TODO: Add put the source and link the source.
     paragraphs = _format_paragraphs(context)
     prompt = prompt_template.format(schema=schema, paragraphs=paragraphs)
     if use_claude:
