@@ -1,12 +1,20 @@
 # TypeDB as a Knowledge Graph for Question Answering
-We are exploring the use of a TypeDB databases for Question Answering.
-We will be focussing on the 2WikiMultihopQA benchmark (The data is under `/data/2wikimultihopQA`)
-The idea is as follows:
-1. We are given the schema for our domain
-2. We use a local-llm on llama-cpp to construct a knowledge graph from the paragraphs in the dataset. This is in the form of TypeQL write queries.
-3. We use a local-llm on llama-cpp to generate a TypeQL query for a question in the dataset.
+We are exploring the use of TypeDB databases for Question Answering, evaluated on the 2WikiMultihopQA benchmark (data under `/data/2wikimultihopQA`).
 
-## Status when writing this document
-1. We have our generated schema under the `typeql` folder.
-2. This still has to be done. 
-3. We have `generate_query.py` which is meant to be used with the `prompts/generate_query.txt`
+## Two Pipelines
+
+### TypeQL Pipeline (`typeql_*`)
+The LLM generates TypeQL directly. Uses a rich typed schema (`base-schema.tql` + `2wmhqa.tql`).
+- `typeql_construction.py` — KG construction (LLM produces TypeQL put statements)
+- `typeql_generate_query.py` — Question answering (LLM produces TypeQL match queries)
+
+### GraphRAG Pipeline (`graphrag_*`)
+The LLM outputs a simplified line format (entity/property/relation), which is converted to TypeQL. Uses a flat schema with `node-label` attributes (`graphrag-schema.tql`).
+- `graphrag_construction.py` — KG construction (LLM produces lines, converted via `lines_to_typeql`)
+- `graphrag_answer.py` — Question answering via RAG (embed question, retrieve docs, LLM answers)
+
+## Shared
+- `common.py` — LLM backends (`generate_query_local`, `generate_query_claude`), embeddings, TypeQL extraction
+- `fetch_schema.py` — Fetch schema from TypeDB
+- Prompts are under `src/typedb_kgqa/prompts/`
+- Schemas are under `src/typedb_kgqa/typeql/`

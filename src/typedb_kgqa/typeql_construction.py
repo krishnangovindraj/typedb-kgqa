@@ -106,7 +106,7 @@ def main():
     parser.add_argument(
         "--prompt", "-p",
         type=str,
-        default="src/typedb_kgqa/prompts/kg_construction.txt",
+        default="src/typedb_kgqa/prompts/typeql_construction.txt",
         help="Path to prompt template file",
     )
 

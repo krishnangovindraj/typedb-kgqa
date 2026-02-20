@@ -1,0 +1,7 @@
+database delete graphrag-kgqa
+database create graphrag-kgqa
+transaction schema graphrag-kgqa
+
+source graphrag-schema.tql
+
+commit

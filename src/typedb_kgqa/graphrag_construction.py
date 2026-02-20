@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Construct a vanilla TypeDB knowledge graph from paragraphs using an LLM.
+"""Construct a GraphRAG TypeDB knowledge graph from paragraphs using an LLM.
 
 Reads a sources file (one JSON list of page titles per line), fetches
 the text-content for each title from TypeDB meta-document entities,
@@ -15,7 +15,7 @@ from pathlib import Path
 from typedb.driver import TypeDB, Credentials, DriverOptions, TransactionType
 
 from .common import generate_query_local, generate_query_claude, get_embeddings_local, encode_embeddings_base64
-from .kg_construction import fetch_documents, _format_paragraphs
+from .typeql_construction import fetch_documents, _format_paragraphs
 
 
 def lines_to_typeql(lines: str, embed_fn=None) -> str:
@@ -206,7 +206,7 @@ def main():
     parser.add_argument(
         "--prompt", "-p",
         type=str,
-        default="src/typedb_kgqa/prompts/vanilla_kg_construction.txt",
+        default="src/typedb_kgqa/prompts/graphrag_construction.txt",
         help="Path to prompt template file",
     )
 

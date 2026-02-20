@@ -86,7 +86,7 @@ def main():
     parser.add_argument(
         "--prompt", "-p",
         type=str,
-        default="src/typedb_kgqa/prompts/rag_answer.txt",
+        default="src/typedb_kgqa/prompts/graphrag_answer.txt",
         help="Path to prompt template file",
     )
 
