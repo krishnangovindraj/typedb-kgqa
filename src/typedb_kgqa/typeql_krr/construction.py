@@ -13,8 +13,8 @@ from pathlib import Path
 
 from typedb.driver import TypeDB, Credentials, DriverOptions, TransactionType
 
-from .fetch_schema import fetch_schema
-from .common import generate_query_local, generate_query_claude, extract_typeql
+from ..fetch_schema import fetch_schema
+from ..common import generate_query_local, generate_query_claude, extract_typeql
 
 def fetch_document(tx, title: str) -> str:
     """Fetch text-content for a meta-document by its meta-page-title."""

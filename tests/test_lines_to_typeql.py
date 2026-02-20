@@ -1,4 +1,4 @@
-from typedb_kgqa.graphrag_construction import lines_to_typeql
+from typedb_kgqa.graphrag.construction import lines_to_typeql
 
 
 def test_entity():

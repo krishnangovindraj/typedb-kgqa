@@ -5,9 +5,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from .fetch_schema import fetch_schema
+from ..fetch_schema import fetch_schema
 
-from .common import generate_query_local, generate_query_claude, extract_typeql
+from ..common import generate_query_local, generate_query_claude, extract_typeql
 
 def generate_query(
     schema: str,

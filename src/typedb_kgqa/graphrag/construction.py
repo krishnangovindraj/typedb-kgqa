@@ -14,8 +14,8 @@ from pathlib import Path
 
 from typedb.driver import TypeDB, Credentials, DriverOptions, TransactionType
 
-from .common import generate_query_local, generate_query_claude, get_embeddings_local, encode_embeddings_base64
-from .typeql_construction import fetch_documents, _format_paragraphs
+from ..common import generate_query_local, generate_query_claude, get_embeddings_local, encode_embeddings_base64
+from ..typeql_krr.construction import fetch_documents, _format_paragraphs
 
 
 def lines_to_typeql(lines: str, embed_fn=None) -> str:

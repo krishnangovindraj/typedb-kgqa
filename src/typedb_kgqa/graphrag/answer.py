@@ -7,7 +7,7 @@ from pathlib import Path
 
 from typedb.driver import TypeDB, Credentials, DriverOptions, TransactionType
 
-from .common import (
+from ..common import (
     get_embeddings_local,
     encode_embeddings_base64,
     generate_query_local,

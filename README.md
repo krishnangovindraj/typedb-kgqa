@@ -63,8 +63,8 @@ Read a sources file, fetch document text from TypeDB, and use an LLM to generate
 TypeQL `put` statements for any information that can be encoded by the types in the schema:
 
 ```bash
-python -m typedb_kgqa.typeql_construction --sources sources.jsonl -d my_database --claude -o inserts.tql
-python -m typedb_kgqa.typeql_construction --sources sources.jsonl -d my_database --url http://localhost:8080/v1 -o inserts.tql
+python -m typedb_kgqa.typeql_krr.construction --sources sources.jsonl -d my_database --claude -o inserts.tql
+python -m typedb_kgqa.typeql_krr.construction --sources sources.jsonl -d my_database --url http://localhost:8080/v1 -o inserts.tql
 ```
 
 Prompt: `src/typedb_kgqa/prompts/typeql_construction.txt`
@@ -74,8 +74,8 @@ Prompt: `src/typedb_kgqa/prompts/typeql_construction.txt`
 Read a questions file and use an LLM to generate TypeQL `match` queries which directly answer the question:
 
 ```bash
-python -m typedb_kgqa.typeql_generate_query -q questions.txt -p src/typedb_kgqa/prompts/typeql_generate_query.txt -d my_database --claude -o queries.tql
-python -m typedb_kgqa.typeql_generate_query -q questions.txt -p src/typedb_kgqa/prompts/typeql_generate_query.txt -d my_database -o queries.tql
+python -m typedb_kgqa.typeql_krr.generate_query -q questions.txt -p src/typedb_kgqa/prompts/typeql_generate_query.txt -d my_database --claude -o queries.tql
+python -m typedb_kgqa.typeql_krr.generate_query -q questions.txt -p src/typedb_kgqa/prompts/typeql_generate_query.txt -d my_database -o queries.tql
 ```
 
 ## GraphRAG Pipeline
@@ -88,8 +88,8 @@ Questions are answered by an initial vector-lookup for nodes, and then expanding
 Read a sources file, extract entities/relations via LLM, convert to TypeQL, and write to TypeDB:
 
 ```bash
-python -m typedb_kgqa.graphrag_construction --sources sources.jsonl -d my_database --claude
-python -m typedb_kgqa.graphrag_construction --sources sources.jsonl -d my_database --url http://localhost:8080/v1 --dry-run
+python -m typedb_kgqa.graphrag.construction --sources sources.jsonl -d my_database --claude
+python -m typedb_kgqa.graphrag.construction --sources sources.jsonl -d my_database --url http://localhost:8080/v1 --dry-run
 ```
 
 Prompt: `src/typedb_kgqa/prompts/graphrag_construction.txt`
@@ -99,8 +99,8 @@ Prompt: `src/typedb_kgqa/prompts/graphrag_construction.txt`
 Embed the question, retrieve relevant documents from TypeDB via graph-aware similarity search, and generate an answer:
 
 ```bash
-python -m typedb_kgqa.graphrag_answer -q questions.txt -d my_database --claude
-python -m typedb_kgqa.graphrag_answer -q questions.txt -d my_database --url http://localhost:8080/v1 -o answers.txt
+python -m typedb_kgqa.graphrag.answer -q questions.txt -d my_database --claude
+python -m typedb_kgqa.graphrag.answer -q questions.txt -d my_database --url http://localhost:8080/v1 -o answers.txt
 ```
 
 Prompt: `src/typedb_kgqa/prompts/graphrag_answer.txt`
