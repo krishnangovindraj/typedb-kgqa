@@ -236,6 +236,14 @@ def main():
         help="TypeDB password (default: password)",
     )
 
+    # Embedding server
+    parser.add_argument(
+        "--embedding-url",
+        type=str,
+        default="http://localhost:8081/v1",
+        help="URL of embedding server (default: http://localhost:8081/v1)",
+    )
+
     # LLM backend options
     parser.add_argument(
         "--claude",
@@ -329,7 +337,7 @@ def main():
                         output_file.write("\n\n")
 
                     # Convert to TypeQL and write to TypeDB
-                    typeql = lines_to_typeql(kg_lines, lambda text: encode_embeddings_base64(get_embeddings_local(args.url +"/v1", [text], False)[0]))
+                    typeql = lines_to_typeql(kg_lines, lambda text: encode_embeddings_base64(get_embeddings_local(args.url, [text], False)[0]))
                     print(f"  Generated {typeql.count(chr(10)) + 1} put statements", file=sys.stderr)
 
                     if not args.dry_run:

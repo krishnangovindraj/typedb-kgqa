@@ -27,8 +27,8 @@ attribute embedding, value string;
 attribute node-label, value string;        # Replaces subtyping — e.g. "film", "song", "school"
 entity entity-node,
     owns meta-page-title @card(0..1),
-    owns node-label,
-	owns embedding,
+    owns node-label @key,
+	owns embedding @card(0..),
     plays meta-knowledge-source:knowledge,
     plays relation-node:related,
     plays property-node:owner;
@@ -41,8 +41,8 @@ entity entity-node,
 
 relation relation-node,
     owns meta-page-title @card(0..1),
-    owns node-label,
-	owns embedding,
+    owns node-label @key,
+	owns embedding @card(0..),
     relates related @card(0..),
     plays meta-knowledge-source:knowledge;
 
@@ -55,8 +55,8 @@ attribute boolean-property sub property, value boolean;
 
 relation property-node,
     relates owner,
-    owns node-label,
-	owns embedding,
+    owns node-label @key,
+	owns embedding @card(0..),
     plays meta-knowledge-source:knowledge,
     owns string-property,
     owns date-property,

@@ -29,7 +29,6 @@ match
 def gather_sources(tx, question_embedding_b64: str) -> list[dict]:
     """Run the RAG retrieval query and return a list of {title, text} dicts."""
     query = RAG_QUERY.format(query_embedding=question_embedding_b64, max_docs=MAX_DOCS_TO_RETREIVE)
-    print("QUERY IS: ", query)
     rows = list(tx.query(query).resolve().as_concept_rows())
     results = []
     for row in rows:
@@ -67,7 +66,6 @@ def answer_question(
     else:
         model = model or "default"
         text = generate_query_local(url, prompt, max_tokens, model)
-
     return text.strip()
 
 
@@ -186,7 +184,7 @@ def main():
                 print(f"[{i}/{total}] Question: {question}", file=sys.stderr)
 
                 # Embed the question
-                embeddings = get_embeddings_local(args.embedding_url + "/v1", [question], is_query=True)
+                embeddings = get_embeddings_local(args.embedding_url, [question], is_query=True)
                 embedding_b64 = encode_embeddings_base64(embeddings[0])
 
                 # Retrieve relevant documents
