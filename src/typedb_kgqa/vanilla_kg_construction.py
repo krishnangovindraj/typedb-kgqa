@@ -337,7 +337,7 @@ def main():
                         output_file.write("\n\n")
 
                     # Convert to TypeQL and write to TypeDB
-                    typeql = lines_to_typeql(kg_lines, lambda text: encode_embeddings_base64(get_embeddings_local(args.url, [text], False)[0]))
+                    typeql = lines_to_typeql(kg_lines, lambda text: encode_embeddings_base64(get_embeddings_local(args.embedding_url, [text], False)[0]))
                     print(f"  Generated {typeql.count(chr(10)) + 1} put statements", file=sys.stderr)
 
                     if not args.dry_run:

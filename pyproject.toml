@@ -7,12 +7,15 @@ name = "typedb-kgqa"
 version = "0.1.0"
 description = "A Python project"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = "MIT"
 authors = [
-    { name = "Your Name", email = "you@example.com" },
+    { name = "Krishnan Govindraj", email = "community@typedb.com" },
 ]
-dependencies = []
+dependencies = [
+    "typedb-driver",
+    "openai",
+]
 
 [project.optional-dependencies]
 dev = [
