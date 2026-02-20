@@ -17,4 +17,4 @@ The LLM outputs a simplified line format (entity/property/relation), which is co
 - `common.py` — LLM backends (`generate_query_local`, `generate_query_claude`), embeddings, TypeQL extraction
 - `fetch_schema.py` — Fetch schema from TypeDB
 - Prompts are under `src/typedb_kgqa/prompts/`
-- Schemas are under `src/typedb_kgqa/typeql/`
+- Schemas are under `src/typedb_kgqa/schema/`
