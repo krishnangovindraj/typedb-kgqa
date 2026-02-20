@@ -82,11 +82,10 @@ def get_embeddings_local(base_url: str, texts: List[str], is_query=False) -> Lis
         model="qwen3-embedding-8b", # This name is often ignored by llama.cpp but required by SDK
         input=processed_input,
     )
-    
     return [item.embedding for item in response.data]
 
 def encode_embeddings_base64(floats: List[float]) -> str: 
     import base64, struct, functools
     as_bytes = (struct.pack('<f', f) for f in floats)
     as_bytes_concatenated = functools.reduce(lambda x,y: x+y, as_bytes,b'')
-    return base64.b64encode(as_bytes_concatenated)
+    return base64.b64encode(as_bytes_concatenated).decode()

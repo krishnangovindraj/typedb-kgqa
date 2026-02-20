@@ -30,7 +30,8 @@ entity entity-node,
     owns node-label,
 	owns embedding,
     plays meta-knowledge-source:knowledge,
-    plays relation-node:related;
+    plays relation-node:related,
+    plays property-node:owner;
 
 # ---- Associations ----
 # parentage, marriage, nationality, employment, education,
@@ -52,10 +53,10 @@ attribute date-property sub property, value date;
 attribute numeric-property sub property, value double;
 attribute boolean-property sub property, value boolean;
 
-entity property-node,
+relation property-node,
+    relates owner,
     owns node-label,
 	owns embedding,
-    plays relation-node:related,
     plays meta-knowledge-source:knowledge,
     owns string-property,
     owns date-property,
@@ -70,7 +71,7 @@ match
     return { $e };
 
 # We don't have a type I can write in the return so I just directly return the documents instead of the nodes.
-fun graph_neigbhour_documents_by_similarity($query-embedding: embedding, $embedding-of-node: embedding, $threshold: double) -> { meta-document }:
+fun graph_neigbhour_documents_by_similarity($query-embedding: string, $embedding-of-node: embedding, $threshold: double) -> { meta-document }:
 match
     $node has $embedding-of-node;
     { $_ links ($node, $neighbour); } or { $neighbour links ($node); };
